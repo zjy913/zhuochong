@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- 桌宠：一只圆圆的开心小团子 -->
+  <defs>
+    <radialGradient id="body" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#fff9e0" />
+      <stop offset="100%" stop-color="#ffd54f" />
+    </radialGradient>
+    <radialGradient id="cheek" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffb3b3" stop-opacity=".55" />
+      <stop offset="100%" stop-color="#ffb3b3" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- 头部 -->
+  <ellipse cx="100" cy="108" rx="68" ry="66" fill="url(#body)" stroke="#e0a020" stroke-width="3" />
+
+  <!-- 耳朵 -->
+  <path d="M 42 82 Q 28 40 62 52 Q 70 62 64 78 Z" fill="#ffc24b" stroke="#e0a020" stroke-width="3" />
+  <path d="M 158 82 Q 172 40 138 52 Q 130 62 136 78 Z" fill="#ffc24b" stroke="#e0a020" stroke-width="3" />
+  <!-- 耳朵内色 -->
+  <path d="M 48 78 Q 40 50 60 58 Q 64 64 62 74 Z" fill="#ff9db0" />
+  <path d="M 152 78 Q 160 50 140 58 Q 136 64 138 74 Z" fill="#ff9db0" />
+
+  <!-- 眼睛 -->
+  <ellipse cx="78" cy="100" rx="9" ry="11" fill="#3a3a3a" />
+  <ellipse cx="122" cy="100" rx="9" ry="11" fill="#3a3a3a" />
+  <!-- 高光 -->
+  <circle cx="81" cy="96" r="3.5" fill="#fff" />
+  <circle cx="125" cy="96" r="3.5" fill="#fff" />
+
+  <!-- 腮红 -->
+  <ellipse cx="55" cy="118" rx="12" ry="8" fill="url(#cheek)" />
+  <ellipse cx="145" cy="118" rx="12" ry="8" fill="url(#cheek)" />
+
+  <!-- 鼻子 -->
+  <ellipse cx="100" cy="114" rx="5" ry="4" fill="#e07030" />
+
+  <!-- 微笑 -->
+  <path d="M 88 124 Q 100 134 112 124" stroke="#a05a20" stroke-width="3.5" fill="none" stroke-linecap="round" />
+
+  <!-- 小手 -->
+  <ellipse cx="40" cy="150" rx="9" ry="7" fill="#ffd54f" stroke="#e0a020" stroke-width="2.5" />
+  <ellipse cx="160" cy="150" rx="9" ry="7" fill="#ffd54f" stroke="#e0a020" stroke-width="2.5" />
+
+  <!-- 小脚 -->
+  <ellipse cx="80" cy="176" rx="11" ry="6" fill="#ffd54f" stroke="#e0a020" stroke-width="2.5" />
+  <ellipse cx="120" cy="176" rx="11" ry="6" fill="#ffd54f" stroke="#e0a020" stroke-width="2.5" />
+</svg>

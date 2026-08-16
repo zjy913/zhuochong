@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>桌面宠物</title>
+  <style>
+    :root {
+      --pet-base: 300px;     /* 宠物贴图基准宽度 */
+      --bubble-max: 170px;   /* 气泡最大宽度 */
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      /* 让整页可点击穿透？不行——我们需要接收鼠标，所以保持正常事件，
+         但背景全透明 */
+      background: transparent;
+      overflow: hidden;
+      user-select: none;
+      cursor: default;
+    }
+
+    /* 宠物容器：铺满透明窗口 */
+    #pet {
+      position: absolute;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;           /* 默认不拦截，仅在 pet-body 上开启 */
+    }
+
+    /* 宠物"身体"：实际展示与点击区域。
+       通过 bottom 定位让它贴着窗口底部，float 动画改 bottom 而非 transform，
+       从而不干扰拖拽时的 scale。 */
+    #pet-body {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      width: var(--pet-base);
+      /* height: var(--pet-base); */
+      height: auto;
+      pointer-events: auto;           /* 只有这块能接收鼠标事件 */
+      cursor: grab;
+      transition: transform .15s ease;
+    }
+    #pet-body.dragging {
+      cursor: grabbing;
+      transform: translateX(-50%) scale(.98);  /* 拖动时微微缩小，有手感 */
+      transition: none;
+    }
+
+    /* 宠物图片：居中铺满 */
+    #pet-img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      -webkit-user-drag: none;
+      display: block;
+    }
+
+    /* 说话气泡 */
+    #bubble {
+      position: absolute;
+      left: 50%; bottom: calc(var(--pet-base) + -60px);
+      transform: translateX(-50%);
+      max-width: var(--bubble-max);
+      background: #fff;
+      color: #333;
+      border: 2px solid #999;
+      border-radius: 12px;
+      padding: 8px 10px;
+      font: 13px/1.5 "Microsoft YaHei", sans-serif;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+      box-shadow: 0 3px 8px rgba(0,0,0,.25);
+    }
+    #bubble.show {
+      opacity: 1;
+    }
+
+    /* 底部提示文字 */
+    #hint {
+      position: absolute;
+      left: 0; right: 0; bottom: 4px;
+      text-align: center;
+      color: rgba(0,0,0,.55);
+      font: 12px "Microsoft YaHei", sans-serif;
+      pointer-events: none;
+      background: rgba(255,255,255,.5);
+      border-radius: 8px;
+      width: fit-content;
+      margin: 0 auto;
+      padding: 2px 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="pet">
+    <div id="pet-body">
+      <img id="pet-img" src="assets/pet.svg" alt="桌宠" draggable="false" />      <div id="bubble"></div>
+    </div>
+  </div>
+
+  <div id="hint">拖动我 · 双击和我说话</div>
+
+  <script>
+    // ============================================================
+    // 桌宠 · 渲染与交互逻辑 (renderer)
+    // ============================================================
+
+    // ---------- 1. 工具函数 ----------
+    const $ = (sel) => document.querySelector(sel);
+    const petBody = $("#pet-body");
+    const bubbleEl = $("#bubble");
+
+    // ---------- 1.5 图片自动识别 ----------
+    // 喜欢换图？把图片放到 assets/ 目录并命名为下面任意一个，代码会自动挑选：
+    //   优先 jpg → png → gif → 最后回退到内置 svg。
+    // 这样换图时不需要改任何代码。
+    const PET_IMAGE_CANDIDATES = [
+      "assets/pet.jpg",
+      "assets/pet.png",
+      "assets/pet.gif",
+      "assets/pet.svg",
+    ];
+    (function pickPetImage() {
+      const img = $("#pet-img");
+      let idx = 0;
+      (function tryNext() {
+        if (idx >= PET_IMAGE_CANDIDATES.length) return;
+        const src = PET_IMAGE_CANDIDATES[idx++];
+        const probe = new Image();
+        probe.onload = () => { img.src = src; };  // 找到能加载的就用
+        probe.onerror = tryNext;                    // 加载失败就试下一个
+        probe.src = src;
+      })();
+    })();
+
+    // ---------- 2. 让桌宠一开始就"落"在屏幕右下角 ----------
+    async function placePetAtStart() {
+      const { width, height, x, y } = await window.petAPI.getScreenSize();
+      const winW = window.innerWidth;   // 窗口实际像素宽
+      const winH = window.innerHeight;  // 窗口实际像素高
+      // 移到右下角：屏幕右边缘 - 窗口宽，屏幕底边缘 - 窗口高
+      await window.petAPI.moveWindow(
+        x + width - winW - 40,
+        y + height - winH - 10
+      );
+    }
+    placePetAtStart();
+
+    // ---------- 3. 拖拽移动（高性能版） ----------
+    // 让拖拽达到"系统级"跟手的关键手段，依次叠加了四条优化：
+    //   ① 计算锚点：按下时只算一次 "鼠标屏幕坐标 - 窗口坐标"，缓存下来，
+    //      移动时直接减法，彻底拿掉对 window.screenX 的重复读取。
+    //   ② rAF 合并：pointermove 只把"最新的目标位置"记下来，不立刻发 IPC，
+    //      由 requestAnimationFrame 每帧只发一次最终坐标 → 匹配屏幕刷新率，
+    //      消除 IPC 洪峰带来的滞后感。
+    //   ③ 拖动时停掉 transition 和呼吸浮动，把每一帧都留给移动。
+    //   ④ 主进程侧再用 setBounds + 最新坐标合并，见 main.js。
+
+    let dragging = false;
+    let anchor = { x: 0, y: 0 };   // 按下时：鼠标屏幕坐标 与 窗口坐标 的差值
+    let target = { x: 0, y: 0 };   // 当前帧的"最终目标窗口位置"
+    let pendingMove = false;       // 是否有未发送的新位置
+
+    petBody.addEventListener("pointerdown", (e) => {
+      // 只在"左键"时开始拖动；右键是弹出退出菜单（见 3.5），不能被拖动抢走
+      if (e.button !== 0) return;
+      dragging = true;
+      petBody.classList.add("dragging");
+
+      // 按下瞬间算一次锚点：鼠标在屏幕上的位置 - 窗口左上角位置
+      anchor = {
+        x: e.screenX - window.screenX,
+        y: e.screenY - window.screenY,
+      };
+      petBody.setPointerCapture(e.pointerId);
+    });
+
+    // 每帧只发一次最新坐标
+    function dragSmooth() {
+      if (!dragging || !pendingMove) {
+        requestAnimationFrame(dragSmooth);
+        return;
+      }
+      pendingMove = false;
+      window.petAPI.moveWindow(target.x, target.y);
+      requestAnimationFrame(dragSmooth);
+    }
+
+    petBody.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      // 汇总成"目标位置"：鼠标屏幕坐标 - 锚点，就是窗口应处的位置
+      target = {
+        x: e.screenX - anchor.x,
+        y: e.screenY - anchor.y,
+      };
+      pendingMove = true;   // 标记有新位置待发送，交给 rAF 去发
+    });
+    requestAnimationFrame(dragSmooth);
+
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      pendingMove = false;
+      petBody.classList.remove("dragging");
+    }
+    petBody.addEventListener("pointerup", endDrag);
+    petBody.addEventListener("pointercancel", endDrag);
+
+    // ---------- 3.5 右键退出菜单 ----------
+    // 在宠物上点右键，弹出原生菜单（含"退出桌宠"）。
+    // 同时也提供托盘图标（右下角）可退出/显示隐藏。
+    petBody.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      window.petAPI.showContextMenu();
+    });
+
+    // ---------- 4. 双击说话（气泡） ----------
+    const PHRASES = [
+      "你好呀！(≧▽≦)",
+      "今天过得怎么样？",
+      "要记得喝水哦 💧",
+      "摸摸头～",
+      "该休息一下啦",
+      "我在陪你呢 🐾",
+    ];
+
+    let bubbleTimer = null;
+    petBody.addEventListener("dblclick", () => {
+      const msg = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+      say(msg);
+    });
+
+    // 显示气泡并自动隐藏
+    function say(text) {
+      bubbleEl.textContent = text;
+      bubbleEl.classList.add("show");
+      clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(() => bubbleEl.classList.remove("show"), 2500);
+    }
+
+    // 启动后先打个招呼
+    setTimeout(() => say("嗨，我是你的桌宠！双击我可以聊天哦"), 600);
+
+    // ---------- 5. 简单待机动画（微微上下浮动，让它"活"一点）----
+    // 通过调节 bottom 实现上下呼吸浮动；拖拽时停掉，避免和定位冲突。
+    const BASE_BOTTOM = 0;
+    (function floatLoop() {
+      const t = Date.now() / 1000;
+      const dy = dragging ? 0 : Math.sin(t * 2.0) * 6;  // 上下 ±6px 呼吸
+      petBody.style.bottom = (BASE_BOTTOM + dy) + "px";
+      requestAnimationFrame(floatLoop);
+    })();
+  </script>
+</body>
+</html>

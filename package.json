@@ -1,0 +1,32 @@
+{
+  "name": "desktop-pet",
+  "version": "1.0.0",
+  "description": "一个能拖拽、会说话的桌面宠物",
+  "author": "You",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.example.desktop-pet",
+    "productName": "DesktopPet",
+    "files": [
+      "main.js",
+      "preload.js",
+      "autostart.js",
+      "index.html",
+      "assets/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable"
+    }
+  }
+}
