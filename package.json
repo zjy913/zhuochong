@@ -4,10 +4,12 @@
   "description": "一个能拖拽、会说话的桌面宠物",
   "author": "You",
   "main": "main.js",
+
   "scripts": {
-    "start": "electron .",
-    "dist": "electron-builder --win"
-  },
+  "start": "electron .",
+  "build": "electron-builder --win",
+  "dist": "electron-builder --win"
+},
   "devDependencies": {
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3"
