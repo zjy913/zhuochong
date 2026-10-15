@@ -17,7 +17,7 @@
       /* 让整页可点击穿透？不行——我们需要接收鼠标，所以保持正常事件，
          但背景全透明 */
       background: transparent;
-      /* overflow: hidden; */
+      overflow: hidden;
       user-select: none;
       cursor: default;
     }
@@ -36,7 +36,7 @@
     #pet-body {
       position: absolute;
       left: 50%;
-      bottom: -1;
+      bottom: 0;
       transform: translateX(-50%);
       width: var(--pet-base);
       /* height: var(--pet-base); */
@@ -83,7 +83,7 @@
     /* 底部提示文字 */
     #hint {
       position: absolute;
-      left: 0; right: 0; bottom: 4px;
+      left: 0; right: 0; bottom: 0px;
       text-align: center;
       color: rgba(0,0,0,.55);
       font: 12px "Microsoft YaHei", sans-serif;

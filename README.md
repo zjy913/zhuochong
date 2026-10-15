@@ -60,7 +60,7 @@ desktop-pet/
     └── DesktopPet 1.0.0.exe   ← 双击即用，无需终端
 ```
 
-### 重新打包 exe
+### 重新打包成 exe 的方式
 
 改完代码后，重新生成 exe：
 
